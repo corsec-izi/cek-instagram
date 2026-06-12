@@ -1,0 +1,1206 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Instagram Content Categorizer & Analyzer - IZI</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- PapaParse for CSV parsing -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+    </style>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        izigreen: {
+                            50: '#f0fdf4',
+                            100: '#dcfce7',
+                            200: '#bbf7d0',
+                            500: '#22c55e',
+                            600: '#16a34a',
+                            700: '#15803d',
+                            800: '#166534',
+                            900: '#14532d',
+                        },
+                        izigold: {
+                            50: '#fffbeb',
+                            100: '#fef3c7',
+                            500: '#f59e0b',
+                            600: '#d97706',
+                            700: '#b45309',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-slate-50 min-h-screen text-slate-800 flex flex-col">
+
+    <!-- Header -->
+    <header class="bg-white border-b border-slate-200 sticky top-0 z-40 shadow-sm">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex flex-col sm:flex-row justify-between items-center gap-4">
+            <div class="flex items-center gap-3">
+                <div class="bg-izigreen-600 p-2.5 rounded-xl text-white shadow-md shadow-izigreen-200">
+                    <i data-lucide="bar-chart-3" class="w-6 h-6"></i>
+                </div>
+                <div>
+                    <h1 class="text-xl font-extrabold text-slate-900 tracking-tight">Instagram Content Analyzer</h1>
+                    <p class="text-xs text-slate-500 font-medium">Kategorisasi Tema Postingan Media Sosial</p>
+                </div>
+            </div>
+            <div class="flex items-center gap-2">
+                <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-izigreen-100 text-izigreen-800">
+                    <span class="w-1.5 h-1.5 bg-izigreen-500 rounded-full mr-1.5 animate-pulse"></span>
+                    Ready to Analyze
+                </span>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 flex flex-col gap-8">
+        
+        <!-- Welcome & Description -->
+        <div class="bg-gradient-to-r from-izigreen-800 to-izigreen-900 rounded-3xl p-6 sm:p-8 text-white shadow-xl relative overflow-hidden">
+            <div class="absolute right-0 bottom-0 opacity-10 transform translate-x-1/4 translate-y-1/4">
+                <i data-lucide="instagram" class="w-80 h-80"></i>
+            </div>
+            <div class="relative z-10 max-w-3xl">
+                <span class="bg-izigreen-700/50 text-izigreen-100 text-xs font-semibold uppercase tracking-wider px-3 py-1 rounded-full border border-izigreen-600">Alat Analisis IZI</span>
+                <h2 class="text-2xl sm:text-3xl font-extrabold mt-3 tracking-tight">Kategorisasi Postingan Instagram Otomatis</h2>
+                <p class="text-izigreen-100/90 text-sm sm:text-base mt-2 leading-relaxed">
+                    Alat interaktif ini dirancang untuk membaca data postingan Instagram (CSV) Anda, mengelompokkannya secara cerdas ke dalam tiga tema utama: <strong>Funding/Ajakan Donasi</strong>, <strong>Distribusi/Penyaluran Program</strong>, dan <strong>Edukasi/Lainnya</strong>. Lengkap dengan performa interaksi untuk menyusun keputusan strategi konten terbaik.
+                </p>
+            </div>
+        </div>
+
+        <!-- CSV Dropzone / Loader -->
+        <section class="grid grid-cols-1 lg:grid-cols-3 gap-6" id="upload-section">
+            <div class="lg:col-span-2 bg-white rounded-2xl border-2 border-dashed border-slate-300 hover:border-izigreen-500 p-8 flex flex-col items-center justify-center text-center transition-all cursor-pointer relative group shadow-sm bg-gradient-to-b from-white to-slate-50" id="drop-zone">
+                <input type="file" id="file-input" accept=".csv" class="absolute inset-0 opacity-0 cursor-pointer" />
+                <div class="bg-izigreen-50 text-izigreen-600 p-4 rounded-full mb-4 group-hover:scale-110 transition-transform">
+                    <i data-lucide="upload-cloud" class="w-10 h-10"></i>
+                </div>
+                <h3 class="text-lg font-bold text-slate-800">Tarik dan letakkan file CSV Anda di sini</h3>
+                <p class="text-sm text-slate-500 mt-1 max-w-sm">Dukung format file ekspor Instagram Scraper dengan kolom <code class="bg-slate-100 px-1 py-0.5 rounded text-xs font-semibold">caption</code>, <code class="bg-slate-100 px-1 py-0.5 rounded text-xs font-semibold">likesCount</code>, dan <code class="bg-slate-100 px-1 py-0.5 rounded text-xs font-semibold">commentsCount</code>.</p>
+                <button class="mt-5 px-5 py-2.5 bg-izigreen-600 hover:bg-izigreen-700 text-white font-semibold rounded-xl text-sm shadow-md shadow-izigreen-100 transition-colors">Pilih File Manual</button>
+            </div>
+
+            <div class="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm flex flex-col justify-between">
+                <div>
+                    <h3 class="text-md font-bold text-slate-800 flex items-center gap-2 mb-3">
+                        <i data-lucide="sparkles" class="w-5 h-5 text-izigold-500"></i>
+                        Uji Coba dengan Data Contoh
+                    </h3>
+                    <p class="text-sm text-slate-600 leading-relaxed">
+                        Belum menyiapkan file CSV Anda? Jangan khawatir! Anda bisa menguji performa dashboard analisis ini secara instan menggunakan dataset simulasi yang mewakili profil konten <strong>Inisiatif Zakat Indonesia (IZI)</strong>.
+                    </p>
+                </div>
+                <button onclick="loadSampleData()" class="mt-6 w-full py-3 border-2 border-izigreen-600 hover:bg-izigreen-50 text-izigreen-700 hover:text-izigreen-800 font-bold rounded-xl text-sm transition-all flex items-center justify-center gap-2">
+                    <i data-lucide="play" class="w-4 h-4"></i>
+                    Gunakan Data Contoh IZI
+                </button>
+            </div>
+        </section>
+
+        <!-- Main Dashboard View (Hidden by Default) -->
+        <div id="dashboard-view" class="hidden flex flex-col gap-8">
+            
+            <!-- Category Management & Keyword Settings -->
+            <section class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                <button onclick="toggleKeywordSettings()" class="w-full px-6 py-4 flex justify-between items-center bg-slate-50 hover:bg-slate-100 transition-colors border-b border-slate-200">
+                    <div class="flex items-center gap-2.5 text-slate-800">
+                        <i data-lucide="sliders" class="w-5 h-5 text-izigreen-600"></i>
+                        <span class="font-bold text-sm sm:text-base">Konfigurasi Kata Kunci Pengelompokan Tema</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span class="text-xs text-slate-500 font-medium">Ubah kata kunci klasifikasi</span>
+                        <i data-lucide="chevron-down" id="keyword-chevron" class="w-5 h-5 transition-transform text-slate-400"></i>
+                    </div>
+                </button>
+                <div id="keyword-settings" class="hidden p-6 border-t border-slate-100 bg-white grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <label class="block text-xs font-bold text-izigreen-800 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                            <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+                            Kategori 1: Funding / Ajakan Donasi (Pisahkan dengan koma)
+                        </label>
+                        <textarea id="kw-funding" class="w-full h-24 p-3 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-izigreen-500 focus:border-izigreen-500 focus:outline-none leading-relaxed" placeholder="Kata kunci donasi..."></textarea>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-izigold-700 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                            <span class="w-2 h-2 rounded-full bg-amber-500"></span>
+                            Kategori 2: Distribusi / Penyaluran Program (Pisahkan dengan koma)
+                        </label>
+                        <textarea id="kw-distribusi" class="w-full h-24 p-3 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-izigreen-500 focus:border-izigreen-500 focus:outline-none leading-relaxed" placeholder="Kata kunci distribusi..."></textarea>
+                    </div>
+                    <div class="md:col-span-2 flex justify-end gap-3 pt-2 border-t border-slate-100">
+                        <button onclick="resetKeywords()" class="px-4 py-2 border border-slate-200 text-slate-600 hover:bg-slate-50 text-xs font-semibold rounded-lg transition-colors">Reset Default</button>
+                        <button onclick="applyKeywords()" class="px-5 py-2 bg-izigreen-600 hover:bg-izigreen-700 text-white text-xs font-bold rounded-lg shadow transition-colors flex items-center gap-1.5">
+                            <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i> Terapkan Perubahan
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Metrics Summary Cards -->
+            <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+                <div class="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm flex items-center gap-4">
+                    <div class="bg-slate-100 text-slate-600 p-3.5 rounded-xl">
+                        <i data-lucide="hash" class="w-6 h-6"></i>
+                    </div>
+                    <div>
+                        <p class="text-xs font-medium text-slate-500 uppercase tracking-wider">Total Postingan</p>
+                        <h4 class="text-2xl font-bold text-slate-900 mt-1" id="metric-total">0</h4>
+                    </div>
+                </div>
+                <div class="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm flex items-center gap-4">
+                    <div class="bg-emerald-50 text-emerald-600 p-3.5 rounded-xl">
+                        <i data-lucide="heart-handshake" class="w-6 h-6"></i>
+                    </div>
+                    <div>
+                        <p class="text-xs font-medium text-slate-500 uppercase tracking-wider">Funding / Donasi</p>
+                        <h4 class="text-2xl font-bold text-slate-900 mt-1" id="metric-funding">0%</h4>
+                        <span class="text-xs text-slate-400 font-medium" id="count-funding">0 posts</span>
+                    </div>
+                </div>
+                <div class="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm flex items-center gap-4">
+                    <div class="bg-amber-50 text-amber-600 p-3.5 rounded-xl">
+                        <i data-lucide="truck" class="w-6 h-6"></i>
+                    </div>
+                    <div>
+                        <p class="text-xs font-medium text-slate-500 uppercase tracking-wider">Penyaluran</p>
+                        <h4 class="text-2xl font-bold text-slate-900 mt-1" id="metric-distribusi">0%</h4>
+                        <span class="text-xs text-slate-400 font-medium" id="count-distribusi">0 posts</span>
+                    </div>
+                </div>
+                <div class="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm flex items-center gap-4">
+                    <div class="bg-sky-50 text-sky-600 p-3.5 rounded-xl">
+                        <i data-lucide="book-open" class="w-6 h-6"></i>
+                    </div>
+                    <div>
+                        <p class="text-xs font-medium text-slate-500 uppercase tracking-wider">Edukasi / Lainnya</p>
+                        <h4 class="text-2xl font-bold text-slate-900 mt-1" id="metric-edukasi">0%</h4>
+                        <span class="text-xs text-slate-400 font-medium" id="count-edukasi">0 posts</span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Charts Visualization -->
+            <section class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <!-- Donut Chart -->
+                <div class="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm flex flex-col h-[400px]">
+                    <h3 class="text-sm font-bold text-slate-900 uppercase tracking-wider mb-2 flex items-center gap-2">
+                        <i data-lucide="pie-chart" class="w-4 h-4 text-izigreen-600"></i>
+                        Persentase Tema Konten
+                    </h3>
+                    <p class="text-xs text-slate-400 mb-6 font-medium">Sebaran porsi tema konten dari total postingan</p>
+                    <div class="flex-grow flex items-center justify-center relative">
+                        <canvas id="donutChart"></canvas>
+                    </div>
+                </div>
+                <!-- Bar Chart -->
+                <div class="lg:col-span-2 bg-white rounded-2xl p-6 border border-slate-200 shadow-sm flex flex-col h-[400px]">
+                    <h3 class="text-sm font-bold text-slate-900 uppercase tracking-wider mb-2 flex items-center gap-2">
+                        <i data-lucide="trending-up" class="w-4 h-4 text-izigreen-600"></i>
+                        Rata-Rata Interaksi Per Tema
+                    </h3>
+                    <p class="text-xs text-slate-400 mb-6 font-medium">Bandingan rata-rata Like & Komentar untuk melihat ketertarikan audiens</p>
+                    <div class="flex-grow relative">
+                        <canvas id="barChart"></canvas>
+                    </div>
+                </div>
+            </section>
+
+            <!-- AI Conclusion Panel -->
+            <section class="bg-gradient-to-br from-slate-900 to-slate-800 rounded-3xl p-6 sm:p-8 text-white shadow-lg border border-slate-700">
+                <div class="flex items-center gap-3 mb-4">
+                    <div class="bg-izigreen-500/20 text-izigreen-400 p-2 rounded-xl border border-izigreen-500/30">
+                        <i data-lucide="lightbulb" class="w-6 h-6"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-lg font-extrabold tracking-tight">Kesimpulan & Rekomendasi Strategis</h3>
+                        <p class="text-xs text-slate-400 font-medium">Dihasilkan secara dinamis berdasarkan data performa akun Anda</p>
+                    </div>
+                </div>
+                <hr class="border-slate-700 mb-6">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8 text-slate-300 text-sm leading-relaxed" id="conclusion-content">
+                    <!-- Dynamic Content Inserted Here -->
+                </div>
+            </section>
+
+            <!-- Table of Categorized Posts -->
+            <section class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col">
+                <!-- Table Controls -->
+                <div class="p-6 border-b border-slate-200 flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-4 bg-slate-50/50">
+                    <div>
+                        <h3 class="text-base font-bold text-slate-900">Eksplorasi Data Postingan</h3>
+                        <p class="text-xs text-slate-400 font-medium mt-0.5">Filter, cari, revisi kategori, dan ekspor data postingan</p>
+                    </div>
+                    <div class="flex flex-wrap items-center gap-2">
+                        <!-- Export Button -->
+                        <button onclick="exportCSV()" class="px-4 py-2 bg-izigreen-600 hover:bg-izigreen-700 text-white text-xs font-bold rounded-xl shadow transition-colors flex items-center gap-1.5">
+                            <i data-lucide="download" class="w-4 h-4"></i> Ekspor CSV Terkategori
+                        </button>
+                    </div>
+                </div>
+
+                <div class="px-6 py-4 border-b border-slate-100 flex flex-col sm:flex-row gap-3 items-center justify-between">
+                    <!-- Filter Tags -->
+                    <div class="flex flex-wrap gap-1.5 w-full sm:w-auto">
+                        <button onclick="setFilter('all')" id="filter-btn-all" class="px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all bg-izigreen-600 text-white shadow-sm shadow-izigreen-100">
+                            Semua <span id="tbl-cnt-all" class="ml-1 bg-white/20 text-white px-1.5 py-0.5 rounded-md text-[10px]">0</span>
+                        </button>
+                        <button onclick="setFilter('funding')" id="filter-btn-funding" class="px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all text-slate-600 hover:bg-slate-100">
+                            Funding <span id="tbl-cnt-funding" class="ml-1 bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded-md text-[10px]">0</span>
+                        </button>
+                        <button onclick="setFilter('distribusi')" id="filter-btn-distribusi" class="px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all text-slate-600 hover:bg-slate-100">
+                            Penyaluran <span id="tbl-cnt-distribusi" class="ml-1 bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded-md text-[10px]">0</span>
+                        </button>
+                        <button onclick="setFilter('edukasi')" id="filter-btn-edukasi" class="px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all text-slate-600 hover:bg-slate-100">
+                            Edukasi/Lainnya <span id="tbl-cnt-edukasi" class="ml-1 bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded-md text-[10px]">0</span>
+                        </button>
+                    </div>
+                    <!-- Search Input -->
+                    <div class="relative w-full sm:w-72">
+                        <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400">
+                            <i data-lucide="search" class="w-4 h-4"></i>
+                        </span>
+                        <input type="text" id="search-input" oninput="handleSearch()" class="w-full pl-9 pr-4 py-2 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-izigreen-500 focus:border-izigreen-500 rounded-xl text-xs placeholder-slate-400" placeholder="Cari isi caption postingan...">
+                    </div>
+                </div>
+
+                <!-- Table Content -->
+                <div class="overflow-x-auto custom-scrollbar">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-slate-50 text-slate-500 text-[11px] font-bold uppercase tracking-wider border-b border-slate-200">
+                                <th class="py-4 px-6 w-1/12">No</th>
+                                <th class="py-4 px-6 w-1/12">Tanggal</th>
+                                <th class="py-4 px-6 w-5/12">Konten Postingan (Caption)</th>
+                                <th class="py-4 px-6 w-2/12 text-center">Interaksi (Like/Komen)</th>
+                                <th class="py-4 px-6 w-3/12 text-center">Kategori Tema</th>
+                            </tr>
+                        </thead>
+                        <tbody id="posts-table-body" class="divide-y divide-slate-100 text-sm">
+                            <!-- Rows will be injected here -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Pagination Footer -->
+                <div class="p-6 border-t border-slate-100 flex flex-col sm:flex-row justify-between items-center gap-4 bg-slate-50/20">
+                    <span class="text-xs text-slate-500 font-medium" id="table-info">Menampilkan 0 dari 0 baris</span>
+                    <div class="flex items-center gap-2">
+                        <button onclick="prevPage()" id="btn-prev" class="p-2 border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-50 disabled:pointer-events-none rounded-lg transition-colors">
+                            <i data-lucide="chevron-left" class="w-4 h-4"></i>
+                        </button>
+                        <span class="text-xs font-bold text-slate-700 bg-slate-100 px-3 py-2 rounded-lg" id="page-num">1</span>
+                        <button onclick="nextPage()" id="btn-next" class="p-2 border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-50 disabled:pointer-events-none rounded-lg transition-colors">
+                            <i data-lucide="chevron-right" class="w-4 h-4"></i>
+                        </button>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-white border-t border-slate-200 py-6 mt-12">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center text-xs text-slate-400 font-medium flex flex-col sm:flex-row justify-between items-center gap-3">
+            <p>&copy; 2026 Instagram Content Analyzer. Dioptimasi untuk Inisiatif Zakat Indonesia (IZI).</p>
+            <p>Dibuat secara cerdas dalam satu file interaktif mandiri.</p>
+        </div>
+    </footer>
+
+    <!-- Script Logic -->
+    <script>
+        // Global State
+        let rawData = [];
+        let processedData = [];
+        let filteredData = [];
+        let currentPage = 1;
+        const rowsPerPage = 10;
+        let currentFilter = 'all';
+        let searchQuery = '';
+        let donutChartInstance = null;
+        let barChartInstance = null;
+
+        // Custom Keywords (Islamic Charity Themed)
+        let keywords = {
+            funding: [
+                'donasi', 'rekening', 'zakat', 'infaq', 'sedekah', 'patungan', 'wakaf', 
+                'transfer', 'bantu', 'berbagi', 'kitabisa', 'link di bio', 'donasikan', 
+                'infak', 'no. rek', 'qurban', 'kurban', 'pembayaran', 'donatur', 
+                'mudah_transfer', 'gerakan berbagi', 'mari bantu', 'yuk berbagi', 
+                'amal jariyah', 'salurkan', 'salurkanlah'
+            ],
+            distribusi: [
+                'penyaluran', 'distribusi', 'disalurkan', 'bantuan diserahkan', 'realisasi', 
+                'penerima manfaat', 'mustahik', 'aksi penyerahan', 'laporan penyaluran', 
+                'titik penyaluran', 'telah diserahkan', 'disampaikan', 'serah terima', 
+                'amanah', 'terbantu', 'implementasi', 'menyerahkan', 'berkunjung ke', 
+                'disalurkan ke', 'alhamdulillah penyaluran'
+            ]
+        };
+
+        // Initialize UI Elements & Event Listeners
+        window.addEventListener('DOMContentLoaded', () => {
+            lucide.createIcons();
+            
+            // Set values in textareas
+            document.getElementById('kw-funding').value = keywords.funding.join(', ');
+            document.getElementById('kw-distribusi').value = keywords.distribusi.join(', ');
+
+            // Setup Drag & Drop File Loader
+            const dropZone = document.getElementById('drop-zone');
+            const fileInput = document.getElementById('file-input');
+
+            fileInput.addEventListener('change', (e) => {
+                if (e.target.files.length > 0) {
+                    parseCSVFile(e.target.files[0]);
+                }
+            });
+
+            // Highlight drag area
+            ['dragenter', 'dragover'].forEach(eventName => {
+                dropZone.addEventListener(eventName, (e) => {
+                    e.preventDefault();
+                    dropZone.classList.add('border-izigreen-500', 'bg-izigreen-50/30');
+                }, false);
+            });
+
+            ['dragleave', 'drop'].forEach(eventName => {
+                dropZone.addEventListener(eventName, (e) => {
+                    e.preventDefault();
+                    dropZone.classList.remove('border-izigreen-500', 'bg-izigreen-50/30');
+                }, false);
+            });
+
+            dropZone.addEventListener('drop', (e) => {
+                const dt = e.dataTransfer;
+                const files = dt.files;
+                if (files.length > 0) {
+                    parseCSVFile(files[0]);
+                }
+            });
+        });
+
+        // Parse CSV File
+        function parseCSVFile(file) {
+            Papa.parse(file, {
+                header: true,
+                skipEmptyLines: true,
+                complete: function(results) {
+                    if (results.data && results.data.length > 0) {
+                        processRawData(results.data);
+                    } else {
+                        alert('Error: File CSV tidak memiliki data yang valid.');
+                    }
+                },
+                error: function(err) {
+                    alert('Error parsing CSV file: ' + err.message);
+                }
+            });
+        }
+
+        // Helper: Find columns dynamically in case headers differ
+        function findColumn(headers, possibleNames) {
+            for (let name of possibleNames) {
+                let found = headers.find(h => h.toLowerCase().trim() === name.toLowerCase());
+                if (found) return found;
+            }
+            for (let name of possibleNames) {
+                let found = headers.find(h => h.toLowerCase().includes(name.toLowerCase()));
+                if (found) return found;
+            }
+            return null;
+        }
+
+        // Process Raw CSV Data
+        function processRawData(data) {
+            rawData = data;
+            const headers = Object.keys(data[0]);
+
+            // Try to identify core columns
+            const captionCol = findColumn(headers, ['caption', 'text', 'isi_postingan', 'konten']);
+            const likesCol = findColumn(headers, ['likescount', 'likes', 'like_count', 'like', 'suka']);
+            const commentsCol = findColumn(headers, ['commentscount', 'comments', 'comment_count', 'comment', 'komentar']);
+            const dateCol = findColumn(headers, ['timestamp', 'date', 'created_at', 'tanggal', 'time']);
+            const urlCol = findColumn(headers, ['url', 'link', 'post_url', 'permalink']);
+
+            processedData = data.map((row, index) => {
+                const captionText = row[captionCol] || '';
+                const likesValue = parseInt(row[likesCol]) || 0;
+                const commentsValue = parseInt(row[commentsCol]) || 0;
+                const dateVal = row[dateCol] || 'No Date';
+                const postUrl = row[urlCol] || '#';
+
+                // Automatically categorize theme
+                const theme = autoCategorize(captionText);
+
+                return {
+                    id: index + 1,
+                    date: dateVal,
+                    caption: captionText,
+                    likes: likesValue,
+                    comments: commentsValue,
+                    url: postUrl,
+                    theme: theme, // 'funding', 'distribusi', 'edukasi'
+                };
+            });
+
+            // Update Views
+            document.getElementById('upload-section').classList.add('hidden');
+            document.getElementById('dashboard-view').classList.remove('hidden');
+
+            refreshAnalysis();
+        }
+
+        // Dynamic Keyword-based Rule engine (NLP heuristic)
+        function autoCategorize(text) {
+            if (!text) return 'edukasi';
+            const lowerText = text.toLowerCase();
+
+            // 1. Check for Funding Keywords
+            const fundingScore = keywords.funding.reduce((score, kw) => {
+                return score + (lowerText.includes(kw.toLowerCase()) ? 1 : 0);
+            }, 0);
+
+            // 2. Check for Distribution Keywords
+            const distribScore = keywords.distribusi.reduce((score, kw) => {
+                return score + (lowerText.includes(kw.toLowerCase()) ? 1 : 0);
+            }, 0);
+
+            // Determine highest score or default to education
+            if (fundingScore > 0 && fundingScore >= distribScore) {
+                return 'funding';
+            } else if (distribScore > 0 && distribScore > fundingScore) {
+                return 'distribusi';
+            } else {
+                return 'edukasi';
+            }
+        }
+
+        // Trigger analysis, build charts, table, and recommendations
+        function refreshAnalysis() {
+            // Apply current query filters & search
+            applyFilters();
+
+            // Calculate overall percentages
+            updateSummaryMetrics();
+
+            // Render Charts
+            renderDonutChart();
+            renderBarChart();
+
+            // Render Automated Conclusions
+            generateConclusions();
+
+            // Render Post Table
+            renderTable();
+        }
+
+        function applyFilters() {
+            filteredData = processedData.filter(item => {
+                // Filter by category
+                const matchesFilter = (currentFilter === 'all' || item.theme === currentFilter);
+                // Filter by search text
+                const matchesSearch = item.caption.toLowerCase().includes(searchQuery.toLowerCase());
+                return matchesFilter && matchesSearch;
+            });
+            currentPage = 1;
+        }
+
+        // Calculation: Summary metrics
+        function updateSummaryMetrics() {
+            const total = processedData.length;
+            document.getElementById('metric-total').textContent = total;
+
+            const fundingCount = processedData.filter(i => i.theme === 'funding').length;
+            const distribCount = processedData.filter(i => i.theme === 'distribusi').length;
+            const edukasiCount = processedData.filter(i => i.theme === 'edukasi').length;
+
+            const fundingPercent = total > 0 ? Math.round((fundingCount / total) * 100) : 0;
+            const distribPercent = total > 0 ? Math.round((distribCount / total) * 100) : 0;
+            const edukasiPercent = total > 0 ? Math.round((edukasiCount / total) * 100) : 0;
+
+            document.getElementById('metric-funding').textContent = `${fundingPercent}%`;
+            document.getElementById('count-funding').textContent = `${fundingCount} postingan`;
+
+            document.getElementById('metric-distribusi').textContent = `${distribPercent}%`;
+            document.getElementById('count-distribusi').textContent = `${distribCount} postingan`;
+
+            document.getElementById('metric-edukasi').textContent = `${edukasiPercent}%`;
+            document.getElementById('count-edukasi').textContent = `${edukasiCount} postingan`;
+
+            // Update filter buttons labels counts
+            document.getElementById('tbl-cnt-all').textContent = total;
+            document.getElementById('tbl-cnt-funding').textContent = fundingCount;
+            document.getElementById('tbl-cnt-distribusi').textContent = distribCount;
+            document.getElementById('tbl-cnt-edukasi').textContent = edukasiCount;
+        }
+
+        // Visual: Donut Chart
+        function renderDonutChart() {
+            const fundingCount = processedData.filter(i => i.theme === 'funding').length;
+            const distribCount = processedData.filter(i => i.theme === 'distribusi').length;
+            const edukasiCount = processedData.filter(i => i.theme === 'edukasi').length;
+
+            const ctx = document.getElementById('donutChart').getContext('2d');
+            
+            if (donutChartInstance) {
+                donutChartInstance.destroy();
+            }
+
+            donutChartInstance = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Funding/Donasi', 'Penyaluran Program', 'Edukasi/Lainnya'],
+                    datasets: [{
+                        data: [fundingCount, distribCount, edukasiCount],
+                        backgroundColor: ['#16a34a', '#f59e0b', '#38bdf8'],
+                        borderColor: '#ffffff',
+                        borderWidth: 3,
+                        hoverOffset: 8
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                boxWidth: 12,
+                                padding: 20,
+                                font: {
+                                    family: 'Plus Jakarta Sans',
+                                    size: 11,
+                                    weight: 'bold'
+                                }
+                            }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const value = context.raw;
+                                    const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                    const percent = Math.round((value / total) * 100);
+                                    return ` ${context.label}: ${value} postingan (${percent}%)`;
+                                }
+                            }
+                        }
+                    },
+                    cutout: '65%'
+                }
+            });
+        }
+
+        // Visual: Bar Chart (Likes & Comments performance)
+        function renderBarChart() {
+            // Helper function to calculate averages
+            const getAverages = (theme) => {
+                const posts = processedData.filter(i => i.theme === theme);
+                if (posts.length === 0) return { likes: 0, comments: 0 };
+                const totalLikes = posts.reduce((sum, item) => sum + item.likes, 0);
+                const totalComments = posts.reduce((sum, item) => sum + item.comments, 0);
+                return {
+                    likes: Math.round(totalLikes / posts.length),
+                    comments: Math.round(totalComments / posts.length)
+                };
+            };
+
+            const fundingAvg = getAverages('funding');
+            const distribAvg = getAverages('distribusi');
+            const edukasiAvg = getAverages('edukasi');
+
+            const ctx = document.getElementById('barChart').getContext('2d');
+
+            if (barChartInstance) {
+                barChartInstance.destroy();
+            }
+
+            barChartInstance = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: ['Funding/Donasi', 'Penyaluran', 'Edukasi/Lainnya'],
+                    datasets: [
+                        {
+                            label: 'Rerata Likes',
+                            data: [fundingAvg.likes, distribAvg.likes, edukasiAvg.likes],
+                            backgroundColor: '#059669',
+                            borderRadius: 6,
+                            borderSkipped: false,
+                        },
+                        {
+                            label: 'Rerata Comments',
+                            data: [fundingAvg.comments, distribAvg.comments, edukasiAvg.comments],
+                            backgroundColor: '#f59e0b',
+                            borderRadius: 6,
+                            borderSkipped: false,
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                boxWidth: 12,
+                                font: {
+                                    family: 'Plus Jakarta Sans',
+                                    size: 11,
+                                    weight: 'bold'
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            grid: {
+                                color: '#f1f5f9'
+                            },
+                            ticks: {
+                                font: {
+                                    family: 'Plus Jakarta Sans',
+                                    size: 10
+                                }
+                            }
+                        },
+                        x: {
+                            grid: {
+                                display: false
+                            },
+                            ticks: {
+                                font: {
+                                    family: 'Plus Jakarta Sans',
+                                    size: 10,
+                                    weight: 'bold'
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Automated Intelligent Recommendations Generation
+        function generateConclusions() {
+            const total = processedData.length;
+            const fundingCount = processedData.filter(i => i.theme === 'funding').length;
+            const distribCount = processedData.filter(i => i.theme === 'distribusi').length;
+            const edukasiCount = processedData.filter(i => i.theme === 'edukasi').length;
+
+            const fundingPercent = total > 0 ? Math.round((fundingCount / total) * 100) : 0;
+            const distribPercent = total > 0 ? Math.round((distribCount / total) * 100) : 0;
+            const edukasiPercent = total > 0 ? Math.round((edukasiCount / total) * 100) : 0;
+
+            // Find dominant theme
+            const percents = [
+                { name: 'Funding / Ajakan Donasi', val: fundingPercent, tag: 'Funding' },
+                { name: 'Distribusi / Penyaluran Program', val: distribPercent, tag: 'Distribusi' },
+                { name: 'Edukasi / Lainnya', val: edukasiPercent, tag: 'Edukasi' }
+            ];
+            percents.sort((a, b) => b.val - a.val);
+            const dominantTheme = percents[0];
+
+            // Calculate engagement averages
+            const getEngagement = (theme) => {
+                const posts = processedData.filter(i => i.theme === theme);
+                if (posts.length === 0) return 0;
+                const totalEngagement = posts.reduce((sum, item) => sum + item.likes + (item.comments * 3), 0); // Comments weighed more
+                return Math.round(totalEngagement / posts.length);
+            };
+
+            const engFunding = getEngagement('funding');
+            const engDistrib = getEngagement('distribusi');
+            const engEdukasi = getEngagement('edukasi');
+
+            const engs = [
+                { name: 'Funding / Ajakan Donasi', val: engFunding, raw: processedData.filter(i => i.theme === 'funding') },
+                { name: 'Distribusi / Penyaluran Program', val: engDistrib, raw: processedData.filter(i => i.theme === 'distribusi') },
+                { name: 'Edukasi / Lainnya', val: engEdukasi, raw: processedData.filter(i => i.theme === 'edukasi') }
+            ];
+            engs.sort((a, b) => b.val - a.val);
+            const favoriteTheme = engs[0];
+
+            let htmlContent = `
+                <!-- Left Column -->
+                <div class="flex flex-col gap-4">
+                    <h4 class="text-white font-extrabold text-sm uppercase tracking-wider text-izigreen-400">Analisis Porsi Konten</h4>
+                    <p>
+                        Berdasarkan analisis terhadap <strong>${total} postingan</strong> Instagram, tema konten didominasi oleh postingan berciri 
+                        <span class="text-white font-semibold underline decoration-izigold-500 underline-offset-4">${dominantTheme.name} (${dominantTheme.val}%)</span>, diikuti oleh 
+                        tema ${percents[1].name} (${percents[1].val}%) dan ${percents[2].name} (${percents[2].val}%).
+                    </p>
+                    <p>
+                        Struktur sebaran ini menunjukkan bahwa fokus komunikasi utama akun Anda saat ini adalah <strong>${dominantTheme.tag === 'Funding' ? 'menghimpun dana/mengajak masyarakat menunaikan zakat dan infaq' : dominantTheme.tag === 'Distribusi' ? 'melaporkan pertanggungjawaban penyaluran dana donatur' : 'mengedukasi audiens lewat materi kajian dan nilai-nilai Islami'}</strong>.
+                    </p>
+                </div>
+                
+                <!-- Right Column -->
+                <div class="flex flex-col gap-4">
+                    <h4 class="text-white font-extrabold text-sm uppercase tracking-wider text-izigreen-400">Rekomendasi & Insight Performa</h4>
+                    <p>
+                        Analisis interaksi (Likes & Komentar) menunjukkan bahwa audiens Anda memberikan respon keterlibatan (engagement) paling aktif pada tema 
+                        <span class="text-white font-semibold underline decoration-sky-400 underline-offset-4">${favoriteTheme.name}</span>.
+                    </p>
+                    <div class="bg-slate-800/80 p-4 rounded-xl border border-slate-700 text-xs flex flex-col gap-2.5">
+                        <div class="flex items-start gap-2">
+                            <span class="p-1 bg-izigreen-500/20 text-izigreen-400 rounded-md font-bold text-[10px] mt-0.5">IPS 1</span>
+                            <p><strong>Rekomendasi Kombinasi:</strong> Konten berjenis <em>Edukasi</em> atau <em>Penyaluran</em> memiliki daya tarik emosional yang tinggi. Selipkan ajakan berdonasi (Funding) secara 'soft-selling' di bagian akhir postingan edukasi untuk meningkatkan rasio konversi.</p>
+                        </div>
+                        <div class="flex items-start gap-2">
+                            <span class="p-1 bg-izigold-500/20 text-izigold-400 rounded-md font-bold text-[10px] mt-0.5">IPS 2</span>
+                            <p><strong>Optimasi Copywriting:</strong> Untuk postingan <em>Funding</em> langsung (hard-selling), usahakan menggunakan visual yang menyentuh empati seperti di postingan penyaluran agar interaksi like dan share bisa meningkat.</p>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            document.getElementById('conclusion-content').innerHTML = htmlContent;
+        }
+
+        // Table UI rendering
+        function renderTable() {
+            const tbody = document.getElementById('posts-table-body');
+            tbody.innerHTML = '';
+
+            if (filteredData.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="5" class="py-12 text-center text-slate-400 font-medium">
+                            <i data-lucide="info" class="w-8 h-8 mx-auto mb-2 text-slate-300"></i>
+                            Tidak ada postingan yang sesuai dengan filter atau kata kunci pencarian.
+                        </td>
+                    </tr>
+                `;
+                document.getElementById('table-info').textContent = 'Menampilkan 0 dari 0 baris';
+                document.getElementById('btn-prev').disabled = true;
+                document.getElementById('btn-next').disabled = true;
+                lucide.createIcons();
+                return;
+            }
+
+            const totalRows = filteredData.length;
+            const totalPages = Math.ceil(totalRows / rowsPerPage);
+            
+            // Adjust current page if overflowed
+            if (currentPage > totalPages) currentPage = totalPages;
+            if (currentPage < 1) currentPage = 1;
+
+            const startIndex = (currentPage - 1) * rowsPerPage;
+            const endIndex = Math.min(startIndex + rowsPerPage, totalRows);
+            const pageData = filteredData.slice(startIndex, endIndex);
+
+            pageData.forEach((item, index) => {
+                const tr = document.createElement('tr');
+                tr.className = 'hover:bg-slate-50/80 transition-colors align-middle';
+
+                // Format timestamp
+                let displayDate = item.date;
+                if (displayDate.includes('T')) {
+                    try {
+                        displayDate = new Date(displayDate).toLocaleDateString('id-ID', {
+                            year: 'numeric', month: 'short', day: 'numeric'
+                        });
+                    } catch (e) {}
+                }
+
+                // Shorten caption
+                const shortCaption = item.caption.length > 120 
+                    ? item.caption.substring(0, 120) + '...' 
+                    : item.caption;
+
+                const fullCaptionEscaped = item.caption.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+
+                // Badges according to category
+                let badgeClass = '';
+                let badgeText = '';
+                if (item.theme === 'funding') {
+                    badgeClass = 'bg-emerald-100 text-emerald-800 border-emerald-200';
+                    badgeText = 'Funding / Donasi';
+                } else if (item.theme === 'distribusi') {
+                    badgeClass = 'bg-amber-100 text-amber-800 border-amber-200';
+                    badgeText = 'Penyaluran Program';
+                } else {
+                    badgeClass = 'bg-sky-100 text-sky-800 border-sky-200';
+                    badgeText = 'Edukasi / Lainnya';
+                }
+
+                tr.innerHTML = `
+                    <td class="py-4 px-6 text-slate-500 font-bold">${startIndex + index + 1}</td>
+                    <td class="py-4 px-6 text-slate-500 font-medium text-xs whitespace-nowrap">${displayDate}</td>
+                    <td class="py-4 px-6">
+                        <div class="flex flex-col gap-1.5">
+                            <p class="text-slate-700 font-medium leading-relaxed text-xs" id="cap-${item.id}">${shortCaption}</p>
+                            ${item.caption.length > 120 ? `
+                                <button onclick="toggleCaption(${item.id}, \`${fullCaptionEscaped}\`)" id="btn-cap-${item.id}" class="text-izigreen-600 hover:text-izigreen-700 font-bold text-[11px] self-start flex items-center gap-1">Selengkapnya <i data-lucide="chevron-down" class="w-3 h-3"></i></button>
+                            ` : ''}
+                            <a href="${item.url}" target="_blank" class="text-slate-400 hover:text-izigreen-600 flex items-center gap-1.5 text-xs font-semibold self-start mt-1">
+                                <i data-lucide="external-link" class="w-3.5 h-3.5"></i> Lihat Postingan Asli
+                            </a>
+                        </div>
+                    </td>
+                    <td class="py-4 px-6 text-center">
+                        <div class="flex items-center justify-center gap-4 text-xs font-semibold">
+                            <span class="flex items-center gap-1 text-slate-600" title="Likes">
+                                <i data-lucide="heart" class="w-3.5 h-3.5 text-rose-500 fill-rose-500"></i> ${item.likes.toLocaleString()}
+                            </span>
+                            <span class="flex items-center gap-1 text-slate-600" title="Comments">
+                                <i data-lucide="message-circle" class="w-3.5 h-3.5 text-sky-500 fill-sky-500"></i> ${item.comments.toLocaleString()}
+                            </span>
+                        </div>
+                    </td>
+                    <td class="py-4 px-6 text-center">
+                        <div class="flex flex-col items-center gap-2">
+                            <span class="inline-flex px-2.5 py-1 rounded-full text-xs font-bold border ${badgeClass}">
+                                ${badgeText}
+                            </span>
+                            <select onchange="updateCategoryManual(${item.id}, this.value)" class="text-[10px] bg-slate-100 hover:bg-slate-200 text-slate-700 border-none font-bold rounded px-1.5 py-0.5 focus:outline-none focus:ring-1 focus:ring-izigreen-500 cursor-pointer">
+                                <option value="" disabled selected>Koreksi Kategori</option>
+                                <option value="funding">Set Funding</option>
+                                <option value="distribusi">Set Penyaluran</option>
+                                <option value="edukasi">Set Edukasi</option>
+                            </select>
+                        </div>
+                    </td>
+                `;
+
+                tbody.appendChild(tr);
+            });
+
+            // Update footer info
+            document.getElementById('table-info').textContent = `Menampilkan ${startIndex + 1} - ${endIndex} dari ${totalRows} baris`;
+            document.getElementById('page-num').textContent = currentPage;
+
+            // Handle disable states
+            document.getElementById('btn-prev').disabled = currentPage === 1;
+            document.getElementById('btn-next').disabled = currentPage === totalPages;
+
+            lucide.createIcons();
+        }
+
+        // Toggle caption long/short
+        function toggleCaption(id, fullText) {
+            const btn = document.getElementById(`btn-cap-${id}`);
+            const p = document.getElementById(`cap-${id}`);
+            const isTruncated = btn.innerHTML.includes('down');
+
+            if (isTruncated) {
+                p.textContent = fullText;
+                btn.innerHTML = `Sembunyikan <i data-lucide="chevron-up" class="w-3 h-3"></i>`;
+            } else {
+                p.textContent = fullText.substring(0, 120) + '...';
+                btn.innerHTML = `Selengkapnya <i data-lucide="chevron-down" class="w-3 h-3"></i>`;
+            }
+            lucide.createIcons();
+        }
+
+        // Manually override a classification
+        function updateCategoryManual(id, newTheme) {
+            const index = processedData.findIndex(item => item.id === id);
+            if (index !== -1) {
+                processedData[index].theme = newTheme;
+                refreshAnalysis();
+            }
+        }
+
+        // Table interaction: filter
+        function setFilter(filterType) {
+            currentFilter = filterType;
+            
+            // Toggle button styles
+            const buttons = ['all', 'funding', 'distribusi', 'edukasi'];
+            buttons.forEach(b => {
+                const btn = document.getElementById(`filter-btn-${b}`);
+                if (b === filterType) {
+                    btn.className = "px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all bg-izigreen-600 text-white shadow-sm shadow-izigreen-100";
+                    btn.querySelector('span').className = "ml-1 bg-white/20 text-white px-1.5 py-0.5 rounded-md text-[10px]";
+                } else {
+                    btn.className = "px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all text-slate-600 hover:bg-slate-100";
+                    btn.querySelector('span').className = "ml-1 bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded-md text-[10px]";
+                }
+            });
+
+            refreshAnalysis();
+        }
+
+        // Table interaction: search
+        function handleSearch() {
+            searchQuery = document.getElementById('search-input').value;
+            refreshAnalysis();
+        }
+
+        // Table interaction: pagination
+        function prevPage() {
+            if (currentPage > 1) {
+                currentPage--;
+                renderTable();
+            }
+        }
+
+        function nextPage() {
+            const totalPages = Math.ceil(filteredData.length / rowsPerPage);
+            if (currentPage < totalPages) {
+                currentPage++;
+                renderTable();
+            }
+        }
+
+        // Config section: Toggle visibility
+        function toggleKeywordSettings() {
+            const panel = document.getElementById('keyword-settings');
+            const chevron = document.getElementById('keyword-chevron');
+            const isHidden = panel.classList.contains('hidden');
+
+            if (isHidden) {
+                panel.classList.remove('hidden');
+                chevron.classList.add('rotate-180');
+            } else {
+                panel.classList.add('hidden');
+                chevron.classList.remove('rotate-180');
+            }
+        }
+
+        // Config section: Apply updated keywords
+        function applyKeywords() {
+            const fundingText = document.getElementById('kw-funding').value;
+            const distribText = document.getElementById('kw-distribusi').value;
+
+            keywords.funding = fundingText.split(',').map(k => k.trim()).filter(k => k.length > 0);
+            keywords.distribusi = distribText.split(',').map(k => k.trim()).filter(k => k.length > 0);
+
+            // Re-evaluate categorization on raw dataset
+            processedData.forEach(item => {
+                item.theme = autoCategorize(item.caption);
+            });
+
+            refreshAnalysis();
+            toggleKeywordSettings(); // Close panel
+        }
+
+        // Config section: Reset keywords to default
+        function resetKeywords() {
+            keywords.funding = [
+                'donasi', 'rekening', 'zakat', 'infaq', 'sedekah', 'patungan', 'wakaf', 
+                'transfer', 'bantu', 'berbagi', 'kitabisa', 'link di bio', 'donasikan', 
+                'infak', 'no. rek', 'qurban', 'kurban', 'pembayaran', 'donatur', 
+                'mudah_transfer', 'gerakan berbagi', 'mari bantu', 'yuk berbagi', 
+                'amal jariyah', 'salurkan', 'salurkanlah'
+            ];
+            keywords.distribusi = [
+                'penyaluran', 'distribusi', 'disalurkan', 'bantuan diserahkan', 'realisasi', 
+                'penerima manfaat', 'mustahik', 'aksi penyerahan', 'laporan penyaluran', 
+                'titik penyaluran', 'telah diserahkan', 'disampaikan', 'serah terima', 
+                'amanah', 'terbantu', 'implementasi', 'menyerahkan', 'berkunjung ke', 
+                'disalurkan ke', 'alhamdulillah penyaluran'
+            ];
+
+            document.getElementById('kw-funding').value = keywords.funding.join(', ');
+            document.getElementById('kw-distribusi').value = keywords.distribusi.join(', ');
+
+            // Re-evaluate
+            processedData.forEach(item => {
+                item.theme = autoCategorize(item.caption);
+            });
+
+            refreshAnalysis();
+        }
+
+        // Export processed data as a CSV back to local download folder
+        function exportCSV() {
+            // Re-map into CSV friendly array
+            const csvRows = processedData.map(item => ({
+                ID: item.id,
+                Tanggal: item.date,
+                Caption: item.caption.replace(/(\r\n|\n|\r)/gm, " "), // Replace linebreaks with spaces
+                Likes: item.likes,
+                Comments: item.comments,
+                URL: item.url,
+                Kategori_Tema: item.theme === 'funding' ? 'Funding/Ajakan Donasi' : item.theme === 'distribusi' ? 'Distribusi/Penyaluran Program' : 'Edukasi/Lainnya'
+            }));
+
+            const csvString = Papa.unparse(csvRows);
+            const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            
+            const link = document.createElement("a");
+            link.setAttribute("href", url);
+            link.setAttribute("download", `Data_Instagram_Teranalisis_${new Date().toISOString().slice(0, 10)}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        // Load simulation sample dataset
+        function loadSampleData() {
+            const mockDataset = [
+                {
+                    caption: "Mari tunaikan Zakat Maal Anda melalui Inisiatif Zakat Indonesia (IZI) guna mensucikan harta dan memberdayakan para dhuafa di penjuru nusantara. Melalui kemudahan transfer zakat, Anda dapat berdonasi secara aman dan transparan. Rekening Zakat BSI: 700 123 4567. Konfirmasi dan konsultasi klik link di bio.",
+                    likesCount: "412",
+                    commentsCount: "25",
+                    timestamp: "2026-06-11T09:00:00.000Z",
+                    url: "https://instagram.com/p/mock1"
+                },
+                {
+                    caption: "Alhamdulillah, IZI telah menyalurkan bantuan paket sembako dan logistik darurat kepada 200 Kepala Keluarga korban bencana banjir bandang di Demak, Jawa Tengah. Distribusi berjalan lancar atas kerjasama tim respon cepat dan para donatur yang tulus berbagi. Terima kasih orang baik!",
+                    likesCount: "587",
+                    commentsCount: "42",
+                    timestamp: "2026-06-10T14:30:00.000Z",
+                    url: "https://instagram.com/p/mock2"
+                },
+                {
+                    caption: "Tahukah Anda keutamaan sedekah subuh? Rasulullah SAW bersabda bahwa setiap subuh, dua malaikat turun mendoakan hamba-Nya yang bersedekah. Yuk, biasakan sedekah subuh meskipun bernilai kecil namun istiqomah. Mari jadikan pagi kita berkah penuh pahala.",
+                    likesCount: "824",
+                    commentsCount: "71",
+                    timestamp: "2026-06-09T05:00:00.000Z",
+                    url: "https://instagram.com/p/mock3"
+                },
+                {
+                    caption: "Yuk patungan sedekah pembangunan sumur bor untuk warga NTT yang saat ini sedang mengalami krisis air bersih ekstrim. Setiap tetes air yang mengalir akan menjadi amal jariyah yang tak terputus bagi Anda. Wakaf air bersih mulai dari Rp 50.000. Salurkan donasi melalui Bank Mandiri 123-00-112233.",
+                    likesCount: "320",
+                    commentsCount: "19",
+                    timestamp: "2026-06-08T10:15:00.000Z",
+                    url: "https://instagram.com/p/mock4"
+                },
+                {
+                    caption: "Senyum bahagia terpancar dari adik Rian di Makassar saat menerima bantuan kaki palsu dari program IZI peduli kesehatan. Melalui penyaluran amanah donatur ini, kini Rian bisa kembali berjalan dengan tegak menuju sekolahnya demi merajut cita-cita setinggi langit.",
+                    likesCount: "645",
+                    commentsCount: "55",
+                    timestamp: "2026-06-07T11:00:00.000Z",
+                    url: "https://instagram.com/p/mock5"
+                },
+                {
+                    caption: "Fiqih Zakat: Siapa sajakah 8 Golongan (Asnaf) yang berhak menerima zakat? Diantaranya adalah Fakir, Miskin, Amil, Muallaf, Riqab, Gharimin, Fisabilillah, dan Ibnu Sabil. Simak ulasan detailnya di infografis berikut ini untuk menambah pemahaman kita tentang syariat zakat.",
+                    likesCount: "732",
+                    commentsCount: "38",
+                    timestamp: "2026-06-06T08:00:00.000Z",
+                    url: "https://instagram.com/p/mock6"
+                },
+                {
+                    caption: "Selamat memperingati Hari Lahir Pancasila! IZI mengajak seluruh elemen bangsa untuk memperkokoh persatuan dengan peduli sesama. Mari amalkan nilai kepedulian sosial untuk mewujudkan keadilan sosial bagi seluruh rakyat Indonesia.",
+                    likesCount: "250",
+                    commentsCount: "5",
+                    timestamp: "2026-06-01T07:00:00.000Z",
+                    url: "https://instagram.com/p/mock7"
+                },
+                {
+                    caption: "Kebutuhan mendesak! Donasi renovasi atap roboh Pondok Pesantren Tahfidz di pelosok Jawa Barat. Santri terpaksa belajar beratapkan langit-langit yang lapuk. Patungan donasi seikhlasnya bisa Anda kirimkan lewat rekening BSI 711 722 7334 atas nama Yayasan Inisiatif Zakat Indonesia.",
+                    likesCount: "439",
+                    commentsCount: "34",
+                    timestamp: "2026-05-30T13:00:00.000Z",
+                    url: "https://instagram.com/p/mock8"
+                },
+                {
+                    caption: "Tim IZI respon cepat menyalurkan tenda darurat, obat-obatan, dan selimut hangat untuk para pengungsi penyintas gempa bumi berkekuatan 5.8 SR di pelosok Maluku. Penyerahan bantuan dilakukan langsung di tenda-tenda pengungsian demi memastikan bantuan tersalurkan merata.",
+                    likesCount: "512",
+                    commentsCount: "29",
+                    timestamp: "2026-05-29T16:20:00.000Z",
+                    url: "https://instagram.com/p/mock9"
+                },
+                {
+                    caption: "Doa agar dimudahkan melunasi hutang dan dilapangkan rezeki yang halal. Simpan postingan ini dan amalkan setelah sholat wajib ya Sahabat IZI! Semoga Allah SWT meridhoi setiap ikhtiar kita dalam mencari nafkah yang berkah bagi keluarga tercinta.",
+                    likesCount: "980",
+                    commentsCount: "85",
+                    timestamp: "2026-05-28T05:30:00.000Z",
+                    url: "https://instagram.com/p/mock10"
+                },
+                {
+                    caption: "Zakat Fitrah adalah kewajiban bagi setiap muslim untuk mensucikan diri di penghujung bulan Ramadhan. Jangan tunda kewajiban mulia ini, tunaikan zakat fitrah keluarga Anda lebih awal melalui portal digital IZI secara aman dan praktis di link bio.",
+                    likesCount: "310",
+                    commentsCount: "12",
+                    timestamp: "2026-05-27T09:00:00.000Z",
+                    url: "https://instagram.com/p/mock11"
+                },
+                {
+                    caption: "Sebanyak 50 paket beasiswa santri penghafal Quran diserahkan IZI kepada santri berprestasi di Pondok Pesantren Al-Hikmah Jambi. Bantuan ini diharapkan mampu mendukung biaya pendidikan para calon penjaga gawang Al-Quran di masa depan.",
+                    likesCount: "480",
+                    commentsCount: "24",
+                    timestamp: "2026-05-26T10:45:00.000Z",
+                    url: "https://instagram.com/p/mock12"
+                },
+                {
+                    caption: "Mengatur keuangan keluarga secara Islami merupakan bagian dari ikhtiar menjemput keberkahan harta. Yuk pelajari tips mengatur porsi keuangan 50-30-20 (Kebutuhan - Tabungan & Investasi - Zakat, Infaq & Sosial) sesuai tuntunan syariah di slide berikut!",
+                    likesCount: "860",
+                    commentsCount: "92",
+                    timestamp: "2026-05-25T08:15:00.000Z",
+                    url: "https://instagram.com/p/mock13"
+                },
+                {
+                    caption: "Donasi Program Kurban IZI: Berbagi daging kurban hingga ke wilayah pelosok, daerah terdampak bencana, dan kantong dhuafa terpencil. Jadikan kurban tahun ini lebih bermakna bersama IZI. Pendaftaran kurban online super mudah via link bio atau WhatsApp resmi kami.",
+                    likesCount: "355",
+                    commentsCount: "18",
+                    timestamp: "2026-05-24T12:00:00.000Z",
+                    url: "https://instagram.com/p/mock14"
+                },
+                {
+                    caption: "Penyaluran bantuan modal usaha dan gerobak dagang program IZI untuk Ibu Maryam, seorang janda pejuang nafkah di Surabaya. Semoga ikhtiar ini bisa membantu memulihkan perekonomian keluarga mandiri beliau secara berkesinambungan. Terima kasih para donatur setia IZI!",
+                    likesCount: "620",
+                    commentsCount: "48",
+                    timestamp: "2026-05-23T11:30:00.000Z",
+                    url: "https://instagram.com/p/mock15"
+                }
+            ];
+
+            // Setup mock processing
+            processedData = mockDataset.map((row, index) => {
+                const captionText = row.caption;
+                const likesValue = parseInt(row.likesCount) || 0;
+                const commentsValue = parseInt(row.commentsCount) || 0;
+                const dateVal = row.timestamp;
+                const postUrl = row.url;
+
+                // Auto categorize
+                const theme = autoCategorize(captionText);
+
+                return {
+                    id: index + 1,
+                    date: dateVal,
+                    caption: captionText,
+                    likes: likesValue,
+                    comments: commentsValue,
+                    url: postUrl,
+                    theme: theme,
+                };
+            });
+
+            // Update view
+            document.getElementById('upload-section').classList.add('hidden');
+            document.getElementById('dashboard-view').classList.remove('hidden');
+
+            refreshAnalysis();
+        }
+    </script>
+</body>
+</html>
